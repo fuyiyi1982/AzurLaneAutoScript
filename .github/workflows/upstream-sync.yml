@@ -66,7 +66,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_upstream_sync.py' -v
           python -m py_compile \
             deploy/upstream.py deploy/git.py deploy/config.py \
-            module/os/globe_operation.py \
+            module/os/globe_operation.py module/os/zone_detection.py \
             module/device/resolution.py module/device/device.py \
             module/device/screenshot.py module/device/control.py \
             module/device/method/uiautomator_2.py module/device/method/droidcast.py

@@ -3,33 +3,38 @@ from pathlib import Path
 
 import numpy as np
 
+from module.base.button import Button
 from module.base.utils import load_image
-from module.os.globe_operation import ASSETS_PINNED_ZONE, GlobeOperation, ZONE_OBSCURE
+from module.os.zone_detection import match_pinned_zone
 
 
 FIXTURE = Path(__file__).parent / 'fixtures' / 'zone_obscure_2560x1440_downsampled.png'
+ZONE_OBSCURE = Button(
+    area=(85, 302, 172, 322),
+    color=(142, 147, 186),
+    button=(85, 302, 172, 322),
+    file=str(Path(__file__).parents[1] / 'assets' / 'cn' / 'os' / 'ZONE_OBSCURE.png'),
+    name='ZONE_OBSCURE',
+)
 
 
-class DummyDevice:
+class ImageDetector:
     def __init__(self, image):
         self.image = image
 
-    @staticmethod
-    def stuck_record_add(button):
-        pass
+    def appear(self, button, offset):
+        return button.match(self.image, offset=offset)
+
+    def match_template_color(self, button, offset, similarity, threshold):
+        return button.match_template_color(
+            self.image,
+            offset=offset,
+            similarity=similarity,
+            threshold=threshold,
+        )
 
 
 class TestOSGlobeHighResolution(unittest.TestCase):
-    def tearDown(self):
-        for button in ASSETS_PINNED_ZONE:
-            button.clear_offset()
-
-    @staticmethod
-    def operation_with(image):
-        operation = object.__new__(GlobeOperation)
-        operation.device = DummyDevice(image)
-        return operation
-
     def test_obscure_zone_survives_high_resolution_downsampling(self):
         image = load_image(FIXTURE)
 
@@ -42,9 +47,13 @@ class TestOSGlobeHighResolution(unittest.TestCase):
             )
         )
 
-        pinned = self.operation_with(image).get_zone_pinned()
-
-        self.assertIs(pinned, ZONE_OBSCURE)
+        self.assertTrue(
+            match_pinned_zone(
+                ImageDetector(image),
+                ZONE_OBSCURE,
+                ZONE_OBSCURE,
+            )
+        )
 
     def test_relaxed_template_still_requires_the_obscure_zone_color(self):
         image = load_image(FIXTURE)
@@ -58,7 +67,13 @@ class TestOSGlobeHighResolution(unittest.TestCase):
                 similarity=0.80,
             )
         )
-        self.assertIsNone(self.operation_with(image).get_zone_pinned())
+        self.assertFalse(
+            match_pinned_zone(
+                ImageDetector(image),
+                ZONE_OBSCURE,
+                ZONE_OBSCURE,
+            )
+        )
 
 
 if __name__ == '__main__':

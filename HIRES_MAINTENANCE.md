@@ -70,11 +70,11 @@
 | module/device/control.py | 点击、长按、滑动等控制入口使用坐标适配 |
 | module/device/method/uiautomator_2.py | 启动时读取和校验设备原生分辨率 |
 | module/device/method/droidcast.py | DroidCast 使用真实 framebuffer 尺寸 |
-| module/os/globe_operation.py | 对 2560×1440 缩图后的隐蔽海域标题做局部容错识别 |
+| module/os/globe_operation.py | 大世界海域标题识别入口 |
+| module/os/zone_detection.py | 对 2560×1440 缩图后的隐蔽海域标题做局部容错识别 |
 | tests/test_resolution_adapter.py | 分辨率、截图和控制坐标的 10 项回归测试 |
 | tests/test_os_globe_high_resolution.py | 隐蔽海域高分辨率缩图识别回归测试 |
 | tests/fixtures/zone_obscure_2560x1440_downsampled.png | 从真实故障截图提取的最小识别区域，不含账号信息 |
-| requirements-ci.txt | 线上测试的精简依赖；大世界识别测试需要 imageio 加载真实资源模块 |
 
 ### 3.4 运行时预期日志
 
@@ -230,7 +230,7 @@ deploy/upstream.py 会捕获异常、写入警告日志，并继续使用最后�
 
 运行关键文件语法检查：
 
-    .\toolkit\python.exe -m py_compile deploy/upstream.py deploy/git.py deploy/config.py module/os/globe_operation.py module/device/resolution.py module/device/device.py module/device/screenshot.py module/device/control.py module/device/method/uiautomator_2.py module/device/method/droidcast.py
+    .\toolkit\python.exe -m py_compile deploy/upstream.py deploy/git.py deploy/config.py module/os/globe_operation.py module/os/zone_detection.py module/device/resolution.py module/device/device.py module/device/screenshot.py module/device/control.py module/device/method/uiautomator_2.py module/device/method/droidcast.py
 
 ### 7.2 2560×1440 模拟器冒烟测试
 

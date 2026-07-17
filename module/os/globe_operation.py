@@ -2,6 +2,7 @@ from module.base.timer import Timer
 from module.base.utils import *
 from module.logger import logger
 from module.os.assets import *
+from module.os.zone_detection import match_pinned_zone
 from module.os_handler.action_point import ActionPointHandler
 from module.os_handler.assets import AUTO_SEARCH_REWARD
 from module.os_handler.port import PORT_CHECK
@@ -10,8 +11,6 @@ from module.ui.assets import BACK_ARROW
 ZONE_TYPES = [ZONE_DANGEROUS, ZONE_SAFE, ZONE_OBSCURE, ZONE_ABYSSAL, ZONE_STRONGHOLD, ZONE_ARCHIVE]
 ZONE_SELECT = [SELECT_DANGEROUS, SELECT_SAFE, SELECT_OBSCURE, SELECT_ABYSSAL, SELECT_STRONGHOLD, SELECT_ARCHIVE]
 ASSETS_PINNED_ZONE = ZONE_TYPES + [ZONE_ENTRANCE, ZONE_SWITCH, ZONE_PINNED]
-ZONE_OBSCURE_SIMILARITY = 0.80
-ZONE_OBSCURE_COLOR_THRESHOLD = 10
 
 
 class OSExploreError(Exception):
@@ -34,21 +33,7 @@ class GlobeOperation(ActionPointHandler):
             Button:
         """
         for zone in ZONE_TYPES:
-            # Downsampling a 2560x1440 screenshot changes the anti-aliasing of
-            # this title enough to miss the default 0.85 template threshold.
-            # Keep the relaxed threshold local and pair it with a strict color
-            # check so other text on the globe cannot be mistaken for it.
-            if zone == ZONE_OBSCURE:
-                appear = self.match_template_color(
-                    zone,
-                    offset=(20, 20),
-                    similarity=ZONE_OBSCURE_SIMILARITY,
-                    threshold=ZONE_OBSCURE_COLOR_THRESHOLD,
-                )
-            else:
-                appear = self.appear(zone, offset=(20, 20))
-
-            if appear:
+            if match_pinned_zone(self, zone, ZONE_OBSCURE):
                 for button in ASSETS_PINNED_ZONE:
                     button.load_offset(zone)
 

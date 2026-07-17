@@ -1,5 +1,4 @@
 adbutils==0.11.0
-imageio==2.27.0
 lxml>=4.9,<7
 numpy>=1.24,<3
 opencv-python-headless>=4.8,<5
