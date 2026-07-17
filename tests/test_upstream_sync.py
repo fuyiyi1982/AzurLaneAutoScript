@@ -12,6 +12,19 @@ class FailingSync(UpstreamSyncManager):
         raise RuntimeError('simulated failure')
 
 
+class CompletingSync(UpstreamSyncManager):
+    def __init__(self, workflow_success):
+        self.workflow_success = workflow_success
+        self.promotions = 0
+
+    def _wait_workflow(self, repository, run_id):
+        return self.workflow_success
+
+    def _promote_stable(self, repository):
+        self.promotions += 1
+        return True
+
+
 class TestUpstreamSyncManager(unittest.TestCase):
     def test_parse_https_repository(self):
         self.assertEqual(
@@ -54,6 +67,27 @@ class TestUpstreamSyncManager(unittest.TestCase):
             UpstreamSyncManager.select_new_workflow_run(runs, {10, 11})['databaseId'],
             12,
         )
+
+    def test_select_existing_promotion_pull_request(self):
+        pull_request = {'number': 2, 'url': 'https://github.com/example/repo/pull/2'}
+
+        self.assertIs(
+            UpstreamSyncManager.select_promotion_pull_request([pull_request]),
+            pull_request,
+        )
+        self.assertIsNone(UpstreamSyncManager.select_promotion_pull_request([]))
+
+    def test_successful_workflow_promotes_stable(self):
+        sync = CompletingSync(workflow_success=True)
+
+        self.assertTrue(sync._complete_sync('example/repo', 1))
+        self.assertEqual(sync.promotions, 1)
+
+    def test_failed_workflow_does_not_promote_stable(self):
+        sync = CompletingSync(workflow_success=False)
+
+        self.assertFalse(sync._complete_sync('example/repo', 1))
+        self.assertEqual(sync.promotions, 0)
 
     def test_failure_keeps_the_last_stable_version(self):
         self.assertFalse(FailingSync().sync_upstream_at_startup())

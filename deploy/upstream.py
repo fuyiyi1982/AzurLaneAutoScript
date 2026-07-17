@@ -58,6 +58,12 @@ class UpstreamSyncManager:
             return None
         return max(new_runs, key=lambda run: int(run.get('databaseId', 0)))
 
+    @staticmethod
+    def select_promotion_pull_request(pull_requests):
+        if not pull_requests:
+            return None
+        return pull_requests[0]
+
     @property
     def github_cli(self):
         configured = str(getattr(self, 'GitHubCliExecutable', 'gh')).strip()
@@ -140,6 +146,9 @@ class UpstreamSyncManager:
         if code != 0:
             return False
 
+        return self._fetch_origin_refs()
+
+    def _fetch_origin_refs(self):
         development_refspec = '+refs/heads/{0}:refs/remotes/origin/{0}'.format(
             self.DevelopmentBranch
         )
@@ -233,6 +242,84 @@ class UpstreamSyncManager:
         logger.warning('Official upstream sync exceeded the configured timeout')
         return False
 
+    def _promotion_pull_request(self, repository):
+        code, output = self._sync_gh(
+            'pr', 'list',
+            '--repo', repository,
+            '--base', self.Branch,
+            '--head', self.DevelopmentBranch,
+            '--state', 'open',
+            '--json', 'url,number,isDraft',
+            log_output=False,
+        )
+        if code != 0:
+            raise RuntimeError('Unable to list stable promotion pull requests')
+
+        pull_request = self.select_promotion_pull_request(json.loads(output or '[]'))
+        if pull_request:
+            return pull_request
+
+        title = 'chore: promote tested {}'.format(self.DevelopmentBranch)
+        body = (
+            'The official upstream sync workflow completed successfully. '
+            'All guarded resolution and updater tests passed, and the rollback '
+            'branch points to the previous stable revision.'
+        )
+        code, output = self._sync_gh(
+            'pr', 'create',
+            '--repo', repository,
+            '--base', self.Branch,
+            '--head', self.DevelopmentBranch,
+            '--title', title,
+            '--body', body,
+        )
+        if code != 0:
+            raise RuntimeError('Unable to create stable promotion pull request')
+        return {'url': output.splitlines()[-1].strip(), 'isDraft': False}
+
+    def _promote_stable(self, repository):
+        if not self._fetch_origin_refs():
+            raise RuntimeError('Unable to refresh branches before stable promotion')
+
+        development_ref = 'refs/remotes/origin/{}'.format(self.DevelopmentBranch)
+        stable_ref = 'refs/remotes/origin/{}'.format(self.Branch)
+        if self._is_ancestor(development_ref, stable_ref):
+            logger.info('Tested development branch is already in stable')
+            return True
+
+        pull_request = self._promotion_pull_request(repository)
+        pull_request_url = pull_request['url']
+        if pull_request.get('isDraft'):
+            code, _ = self._sync_gh('pr', 'ready', pull_request_url, '--repo', repository)
+            if code != 0:
+                raise RuntimeError('Unable to mark stable promotion pull request ready')
+
+        code, _ = self._sync_gh(
+            'pr', 'merge', pull_request_url,
+            '--repo', repository,
+            '--merge',
+            timeout=180,
+        )
+        if code != 0:
+            if self._fetch_origin_refs() and self._is_ancestor(
+                    development_ref, stable_ref):
+                return True
+            raise RuntimeError('Unable to merge stable promotion pull request')
+
+        deadline = time.time() + 60
+        while time.time() < deadline:
+            if self._fetch_origin_refs() and self._is_ancestor(
+                    development_ref, stable_ref):
+                logger.info('Tested development branch promoted to stable')
+                return True
+            time.sleep(3)
+        raise RuntimeError('Stable branch did not contain the tested development revision')
+
+    def _complete_sync(self, repository, run_id):
+        if not self._wait_workflow(repository, run_id):
+            return False
+        return self._promote_stable(repository)
+
     def _sync_upstream_at_startup(self):
         if not self._fetch_sync_refs():
             logger.warning('Unable to fetch branches for official upstream check')
@@ -258,7 +345,7 @@ class UpstreamSyncManager:
 
         repository = self.github_repository_slug(self.Repository)
         run_id = self._dispatch_workflow(repository)
-        return self._wait_workflow(repository, run_id)
+        return self._complete_sync(repository, run_id)
 
     def sync_upstream_at_startup(self):
         if not getattr(self, 'AutoSyncUpstream', False):

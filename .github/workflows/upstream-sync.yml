@@ -5,7 +5,6 @@ on:
 
 permissions:
   contents: write
-  pull-requests: write
 
 concurrency:
   group: hires-official-upstream-sync
@@ -44,7 +43,6 @@ jobs:
           else
             echo "needs_promotion=true" >> "$GITHUB_OUTPUT"
           fi
-          echo "upstream_sha=$(git rev-parse upstream/master)" >> "$GITHUB_OUTPUT"
 
       - name: Set up Python
         if: steps.merge.outputs.needs_promotion == 'true'
@@ -75,34 +73,10 @@ jobs:
         if: steps.merge.outputs.needs_promotion == 'true'
         run: git push origin HEAD:hires-dev
 
-      - name: Save rollback point and promote stable branch
+      - name: Save rollback point
         if: steps.merge.outputs.needs_promotion == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          UPSTREAM_SHA: ${{ steps.merge.outputs.upstream_sha }}
         shell: bash
         run: |
           set -euo pipefail
           stable_sha="$(git rev-parse origin/hires-stable)"
           git push --force origin "$stable_sha:refs/heads/hires-stable-rollback"
-
-          pr_url="$(gh pr list \
-            --base hires-stable \
-            --head hires-dev \
-            --state open \
-            --json url \
-            --jq '.[0].url')"
-          if [ -z "$pr_url" ]; then
-            body="Automatically merged the latest official master into hires-dev. "
-            body+="The guarded resolution and updater tests passed; "
-            body+="hires-stable-rollback points to the previous stable revision."
-            pr_url="$(gh pr create \
-              --base hires-stable \
-              --head hires-dev \
-              --title "chore: sync official upstream ${UPSTREAM_SHA:0:8}" \
-              --body "$body")"
-          fi
-          gh pr merge "$pr_url" --merge --delete-branch=false
-
-          git fetch --no-tags origin hires-stable
-          git merge-base --is-ancestor HEAD origin/hires-stable
