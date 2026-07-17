@@ -92,11 +92,15 @@ class Screenshot(Adb, WSA, DroidCast, AScreenCap, Scrcpy, NemuIpc, LDOpenGL):
         Returns:
             np.ndarray:
         """
-        width, height = image_size(self.image)
-        if width == 1280 and height == 720:
+        width, height = image_size(image)
+        # DroidCast_raw already rotates MuMu's vertical framebuffer into a
+        # landscape image. Trust any supported landscape frame instead of
+        # applying the device orientation a second time.
+        if width > height and self.resolution_is_supported((width, height)):
             return image
 
-        # Rotate screenshots only when they're not 1280x720
+        # Rotate screenshots only when they are not already supported landscape
+        # frames.
         if self.orientation == 0:
             pass
         elif self.orientation == 1:
