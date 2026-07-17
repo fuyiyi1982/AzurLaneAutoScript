@@ -6,6 +6,7 @@ from module.logger import logger
 from module.map.assets import MAP_CAT_ATTACK
 from module.map.map_operation import MapOperation
 from module.os.globe_zone import ZoneManager
+from module.os.order_detection import is_map_order_page
 from module.os_handler.action_point import ActionPointHandler
 from module.os_handler.assets import *
 from module.os_handler.map_event import MapEventHandler
@@ -13,7 +14,7 @@ from module.os_handler.map_event import MapEventHandler
 
 class MapOrderHandler(MapOperation, ActionPointHandler, MapEventHandler, ZoneManager):
     def is_in_map_order(self):
-        return self.appear(ORDER_CHECK, offset=(20, 20))
+        return is_map_order_page(self, ORDER_CHECK)
 
     def order_enter(self):
         """

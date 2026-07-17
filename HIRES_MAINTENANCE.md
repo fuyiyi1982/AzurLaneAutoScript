@@ -72,9 +72,13 @@
 | module/device/method/droidcast.py | DroidCast 使用真实 framebuffer 尺寸 |
 | module/os/globe_operation.py | 大世界海域标题识别入口 |
 | module/os/zone_detection.py | 对 2560×1440 缩图后的隐蔽海域标题做局部容错识别 |
+| module/os_handler/map_order.py | G.M. 指令页进入、执行与退出流程 |
+| module/os/order_detection.py | 兼容新旧 G.M. 指令页的轻量识别策略 |
 | tests/test_resolution_adapter.py | 分辨率、截图和控制坐标的 10 项回归测试 |
 | tests/test_os_globe_high_resolution.py | 隐蔽海域高分辨率缩图识别回归测试 |
+| tests/test_os_order_detection.py | 新旧 G.M. 指令页及误识别保护的 3 项回归测试 |
 | tests/fixtures/zone_obscure_2560x1440_downsampled.png | 从真实故障截图提取的最小识别区域，不含账号信息 |
+| tests/fixtures/order_gms_2560x1440_downsampled.png | 从真实故障截图提取的 G.M. 指令页最小识别区域 |
 
 ### 3.4 运行时预期日志
 
@@ -222,15 +226,19 @@ deploy/upstream.py 会捕获异常、写入警告日志，并继续使用最后�
 
     .\toolkit\python.exe -m unittest discover -s tests -p test_os_globe_high_resolution.py -v
 
+运行 G.M. 指令页识别测试：
+
+    .\toolkit\python.exe -m unittest discover -s tests -p test_os_order_detection.py -v
+
 运行更新器测试：
 
     .\toolkit\python.exe -m unittest discover -s tests -p test_upstream_sync.py -v
 
-当前预期是分辨率 10 项、高分辨率大世界识别 2 项、更新器 10 项，共 22 项通过。
+当前预期是分辨率 10 项、高分辨率大世界识别 2 项、G.M. 指令页识别 3 项、更新器 10 项，共 25 项通过。
 
 运行关键文件语法检查：
 
-    .\toolkit\python.exe -m py_compile deploy/upstream.py deploy/git.py deploy/config.py module/os/globe_operation.py module/os/zone_detection.py module/device/resolution.py module/device/device.py module/device/screenshot.py module/device/control.py module/device/method/uiautomator_2.py module/device/method/droidcast.py
+    .\toolkit\python.exe -m py_compile deploy/upstream.py deploy/git.py deploy/config.py module/os/globe_operation.py module/os/zone_detection.py module/os/order_detection.py module/os_handler/map_order.py module/device/resolution.py module/device/device.py module/device/screenshot.py module/device/control.py module/device/method/uiautomator_2.py module/device/method/droidcast.py
 
 ### 7.2 2560×1440 模拟器冒烟测试
 
@@ -289,6 +297,7 @@ CI 不能连接模拟器，因此真实设备冒烟测试仍然是必要的。
 
 - test_resolution_adapter.py
 - test_os_globe_high_resolution.py
+- test_os_order_detection.py
 - test_upstream_sync.py
 - 一组关键 Python 文件的 py_compile
 
@@ -319,7 +328,7 @@ CI 不能连接模拟器，因此真实设备冒烟测试仍然是必要的。
 1. 从 origin/hires-dev 建立临时调试分支。
 2. 在临时分支合并 upstream/master。
 3. 重点检查第 3.3 节列出的分辨率相关文件，以及 deploy 目录的同步实现。
-4. 解决冲突后运行全部 22 项测试和模拟器冒烟测试。
+4. 解决冲突后运行全部 25 项测试和模拟器冒烟测试。
 5. 再把修复提交到 hires-dev，重新触发工作流。
 
 ### 9.3 工作流测试失败
@@ -375,7 +384,22 @@ CI 不能连接模拟器，因此真实设备冒烟测试仍然是必要的。
 
 排查同类问题时，先保存错误截图并离线计算目标模板相似度和颜色差异。不要在没有证据时修改坐标，也不要降低全局识别门槛。
 
-### 9.8 临时停止自动同步
+### 9.8 进入 G.M. 指令页后一直显示“正在扫描”
+
+典型日志是 `ORDER_SCAN`、`Order enter`、点击 `ORDER_ENTER` 后再无进展，约 60 秒后在 `order_enter()` 报 `GameStuckError`，等待集合中包含 `ORDER_CHECK`。画面已经进入 G.M. 指令页，中央显示“正在扫描”，但日志里还没有点击 `ORDER_SCAN`。
+
+这里的“正在扫描”是指令页背景状态，不代表程序已经执行了空域侦察。2026-07-17 的真实故障截图显示，程序原来的 `ORDER_CHECK` 依赖左下角蓝色“i”图标，而当前游戏界面已把该位置换成角色头像，旧模板相似度只有约 0.4612。因此程序一直误以为尚未进入指令页。
+
+修复采用双重兼容识别：
+
+- 优先保留旧版左下角“i”图标模板，兼容旧界面。
+- 旧模板失败时，检测左上角稳定的黄色 G.M. 退出图标。
+- 不修改 `ORDER_ENTER`、`ORDER_SCAN` 或退出按钮的点击坐标。
+- 回归测试验证新版页面可识别、旧版页面仍可识别、无关页面不会误识别。
+
+遇到相同症状时，先看调用栈是否停在 `order_enter()`。如果已经进入 `order_execute()`，则属于后续指令按钮或弹窗问题，不应继续调整本节的页面检查条件。
+
+### 9.9 临时停止自动同步
 
 只停止官方同步，但仍允许客户端拉取现有稳定版：
 
@@ -459,7 +483,7 @@ CI 不能连接模拟器，因此真实设备冒烟测试仍然是必要的。
 4. 拉取 origin 和 upstream，但不要直接修改 hires-stable。
 5. 复现问题并收集客户端日志、GitHub Actions 运行链接、模拟器分辨率和实际控制后端。
 6. 在 hires-dev 或临时调试分支修复。
-7. 运行 22 项自动测试、py_compile 和必要的模拟器冒烟测试。
+7. 运行 25 项自动测试、py_compile 和必要的模拟器冒烟测试。
 8. 通过远端工作流和合并请求晋级 hires-stable。
 9. 最后验证分支祖先关系、默认分支、回退点和客户端本地配置。
 
