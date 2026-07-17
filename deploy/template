@@ -23,6 +23,16 @@ Deploy:
     # Update Alas at startup
     # [In most cases] Use true
     AutoUpdate: true
+    # Check the official project on each client startup and dispatch a guarded GitHub workflow.
+    # The workflow must pass tests before DevelopmentBranch is promoted to Branch.
+    AutoSyncUpstream: false
+    UpstreamRepository: 'https://github.com/LmeSzinc/AzurLaneAutoScript'
+    UpstreamBranch: 'master'
+    DevelopmentBranch: 'hires-dev'
+    SyncWorkflow: 'upstream-sync.yml'
+    # Maximum seconds to wait for the GitHub workflow before falling back to the last stable version.
+    SyncTimeout: 900
+    GitHubCliExecutable: 'gh'
 
   Python:
     # Filepath of python executable `python.exe`
