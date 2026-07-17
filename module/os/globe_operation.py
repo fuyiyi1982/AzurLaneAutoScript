@@ -2,6 +2,7 @@ from module.base.timer import Timer
 from module.base.utils import *
 from module.logger import logger
 from module.os.assets import *
+from module.os.zone_detection import match_pinned_zone
 from module.os_handler.action_point import ActionPointHandler
 from module.os_handler.assets import AUTO_SEARCH_REWARD
 from module.os_handler.port import PORT_CHECK
@@ -32,7 +33,7 @@ class GlobeOperation(ActionPointHandler):
             Button:
         """
         for zone in ZONE_TYPES:
-            if self.appear(zone, offset=(20, 20)):
+            if match_pinned_zone(self, zone, ZONE_OBSCURE):
                 for button in ASSETS_PINNED_ZONE:
                     button.load_offset(zone)
 
