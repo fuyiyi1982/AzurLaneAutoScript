@@ -1,0 +1,82 @@
+name: Sync official upstream
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hires-official-upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out development branch
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: hires-dev
+
+      - name: Merge official upstream locally
+        id: merge
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream https://github.com/LmeSzinc/AzurLaneAutoScript.git
+          git fetch --no-tags upstream master
+          git fetch --no-tags origin hires-stable
+
+          if git merge-base --is-ancestor upstream/master HEAD; then
+            echo "Official upstream is already contained in hires-dev."
+          else
+            git merge --no-edit upstream/master
+          fi
+
+          if git merge-base --is-ancestor HEAD origin/hires-stable; then
+            echo "needs_promotion=false" >> "$GITHUB_OUTPUT"
+            echo "hires-dev is already contained in hires-stable."
+          else
+            echo "needs_promotion=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Python
+        if: steps.merge.outputs.needs_promotion == 'true'
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.10'
+          cache: pip
+          cache-dependency-path: requirements-ci.txt
+
+      - name: Install test dependencies
+        if: steps.merge.outputs.needs_promotion == 'true'
+        run: python -m pip install --disable-pip-version-check -r requirements-ci.txt
+
+      - name: Run guarded tests
+        if: steps.merge.outputs.needs_promotion == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s tests -p 'test_resolution_adapter.py' -v
+          python -m unittest discover -s tests -p 'test_upstream_sync.py' -v
+          python -m py_compile \
+            deploy/upstream.py deploy/git.py deploy/config.py \
+            module/device/resolution.py module/device/device.py \
+            module/device/screenshot.py module/device/control.py \
+            module/device/method/uiautomator_2.py module/device/method/droidcast.py
+
+      - name: Push tested development branch
+        if: steps.merge.outputs.needs_promotion == 'true'
+        run: git push origin HEAD:hires-dev
+
+      - name: Save rollback point
+        if: steps.merge.outputs.needs_promotion == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          stable_sha="$(git rev-parse origin/hires-stable)"
+          git push --force origin "$stable_sha:refs/heads/hires-stable-rollback"

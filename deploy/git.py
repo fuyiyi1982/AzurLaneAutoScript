@@ -1,10 +1,11 @@
 from deploy.config import DeployConfig
 from deploy.git_over_cdn.client import GitOverCdnClient
 from deploy.logger import logger
+from deploy.upstream import UpstreamSyncManager
 from deploy.utils import *
 
 
-class GitManager(DeployConfig):
+class GitManager(UpstreamSyncManager, DeployConfig):
     @cached_property
     def git(self):
         exe = self.filepath('GitExecutable')
@@ -93,6 +94,8 @@ class GitManager(DeployConfig):
         if self.GitOverCdn:
             if self.goc_client.update():
                 return
+
+        self.sync_upstream_at_startup()
 
         self.git_repository_init(
             repo=self.Repository,

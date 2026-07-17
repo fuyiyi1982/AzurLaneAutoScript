@@ -17,6 +17,13 @@ class ConfigModel:
     GitProxy: Optional[str] = None
     SSLVerify: bool = False
     AutoUpdate: bool = True
+    AutoSyncUpstream: bool = False
+    UpstreamRepository: str = "https://github.com/LmeSzinc/AzurLaneAutoScript"
+    UpstreamBranch: str = "master"
+    DevelopmentBranch: str = "hires-dev"
+    SyncWorkflow: str = "upstream-sync.yml"
+    SyncTimeout: int = 900
+    GitHubCliExecutable: str = "gh"
 
     # Python
     PythonExecutable: str = "./toolkit/python.exe"
