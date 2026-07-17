@@ -4,7 +4,6 @@ import numpy as np
 
 from module.device.resolution import ResolutionAdapter
 from module.device.method.droidcast import DroidCast
-from module.device.screenshot import Screenshot
 
 
 class DummyDroidCast(ResolutionAdapter, DroidCast):
@@ -15,11 +14,6 @@ class DummyDroidCast(ResolutionAdapter, DroidCast):
 
     def get_orientation(self):
         return 0
-
-
-class DummyScreenshot(ResolutionAdapter):
-    orientation = 1
-    _handle_orientated_image = Screenshot._handle_orientated_image
 
 
 class TestResolutionAdapter(unittest.TestCase):
@@ -41,23 +35,20 @@ class TestResolutionAdapter(unittest.TestCase):
         self.assertEqual(self.adapter.resolution_native_size, (2560, 1440))
 
     def test_mumu_landscape_screenshot_is_not_rotated_twice(self):
-        screenshot = DummyScreenshot()
         image = np.zeros((1440, 2560, 3), dtype=np.uint8)
-        screenshot.image = image
 
-        orientated = screenshot._handle_orientated_image(image)
-        result = screenshot.resolution_normalize_image(orientated)
+        orientated = self.adapter.resolution_orient_image(image, orientation=1)
+        result = self.adapter.resolution_normalize_image(orientated)
 
+        self.assertIs(orientated, image)
         self.assertEqual(orientated.shape, (1440, 2560, 3))
         self.assertEqual(result.shape, (720, 1280, 3))
 
     def test_portrait_high_resolution_screenshot_is_rotated_once(self):
-        screenshot = DummyScreenshot()
         image = np.zeros((2560, 1440, 3), dtype=np.uint8)
-        screenshot.image = image
 
-        orientated = screenshot._handle_orientated_image(image)
-        result = screenshot.resolution_normalize_image(orientated)
+        orientated = self.adapter.resolution_orient_image(image, orientation=1)
+        result = self.adapter.resolution_normalize_image(orientated)
 
         self.assertEqual(orientated.shape, (1440, 2560, 3))
         self.assertEqual(result.shape, (720, 1280, 3))

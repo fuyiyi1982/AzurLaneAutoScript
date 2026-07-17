@@ -92,27 +92,7 @@ class Screenshot(Adb, WSA, DroidCast, AScreenCap, Scrcpy, NemuIpc, LDOpenGL):
         Returns:
             np.ndarray:
         """
-        width, height = image_size(image)
-        # DroidCast_raw already rotates MuMu's vertical framebuffer into a
-        # landscape image. Trust any supported landscape frame instead of
-        # applying the device orientation a second time.
-        if width > height and self.resolution_is_supported((width, height)):
-            return image
-
-        # Rotate screenshots only when they are not already supported landscape
-        # frames.
-        if self.orientation == 0:
-            pass
-        elif self.orientation == 1:
-            image = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        elif self.orientation == 2:
-            image = cv2.rotate(image, cv2.ROTATE_180)
-        elif self.orientation == 3:
-            image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
-        else:
-            raise ScriptError(f'Invalid device orientation: {self.orientation}')
-
-        return image
+        return self.resolution_orient_image(image, self.orientation)
 
     @cached_property
     def screenshot_deque(self):

@@ -3,6 +3,7 @@ import typing as t
 import cv2
 
 from module.base.utils import image_size
+from module.exception import ScriptError
 from module.logger import logger
 
 
@@ -50,6 +51,27 @@ class ResolutionAdapter:
             if size != self.REFERENCE_RESOLUTION:
                 logger.info('Use 1280x720 virtual resolution for image recognition and controls')
         return True
+
+    def resolution_orient_image(self, image, orientation: int):
+        """Rotate a portrait frame once while preserving supported landscape frames."""
+        width, height = image_size(image)
+        # DroidCast_raw already rotates MuMu's vertical framebuffer into a
+        # landscape image. Trust it instead of applying device orientation
+        # again.
+        if width > height and self.resolution_is_supported((width, height)):
+            return image
+
+        if orientation == 0:
+            pass
+        elif orientation == 1:
+            image = cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        elif orientation == 2:
+            image = cv2.rotate(image, cv2.ROTATE_180)
+        elif orientation == 3:
+            image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+        else:
+            raise ScriptError(f'Invalid device orientation: {orientation}')
+        return image
 
     def resolution_normalize_image(self, image):
         """Downsample a supported native screenshot to the Alas reference size."""
