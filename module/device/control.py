@@ -1,4 +1,3 @@
-from module.base.button import Button
 from module.base.decorator import cached_property
 from module.base.timer import Timer
 from module.base.utils import *
@@ -7,6 +6,7 @@ from module.device.method.maatouch import MaaTouch
 from module.device.method.minitouch import Minitouch
 from module.device.method.nemu_ipc import NemuIpc
 from module.device.method.scrcpy import Scrcpy
+from module.device.method.utils import HierarchyButton
 from module.logger import logger
 
 
@@ -37,11 +37,15 @@ class Control(Hermit, Minitouch, Scrcpy, MaaTouch, NemuIpc):
             self.handle_control_check(button)
         x, y = random_rectangle_point(button.button)
         x, y = ensure_int(x, y)
+        method_name = self.config.Emulator_ControlMethod
+        x, y = self.resolution_control_point(
+            (x, y), method_name, native_input=isinstance(button, HierarchyButton)
+        )
         logger.info(
             'Click %s @ %s' % (point2str(x, y), button)
         )
         method = self.click_methods.get(
-            self.config.Emulator_ControlMethod,
+            method_name,
             self.click_adb
         )
         method(x, y)
@@ -68,10 +72,13 @@ class Control(Hermit, Minitouch, Scrcpy, MaaTouch, NemuIpc):
         x, y = random_rectangle_point(button.button)
         x, y = ensure_int(x, y)
         duration = ensure_time(duration)
+        method = self.config.Emulator_ControlMethod
+        x, y = self.resolution_control_point(
+            (x, y), method, native_input=isinstance(button, HierarchyButton)
+        )
         logger.info(
             'Click %s @ %s, %s' % (point2str(x, y), button, duration)
         )
-        method = self.config.Emulator_ControlMethod
         if method == 'minitouch':
             self.long_click_minitouch(x, y, duration)
         elif method == 'uiautomator2':
@@ -106,6 +113,8 @@ class Control(Hermit, Minitouch, Scrcpy, MaaTouch, NemuIpc):
                 logger.info('Swipe distance < 10px, dropped')
                 return
 
+        p1 = self.resolution_control_point(p1, method)
+        p2 = self.resolution_control_point(p2, method)
         if method == 'minitouch':
             self.swipe_minitouch(p1, p2)
         elif method == 'uiautomator2':
@@ -155,6 +164,11 @@ class Control(Hermit, Minitouch, Scrcpy, MaaTouch, NemuIpc):
             'Drag %s -> %s' % (point2str(*p1), point2str(*p2))
         )
         method = self.config.Emulator_ControlMethod
+        p1 = self.resolution_control_point(p1, method)
+        p2 = self.resolution_control_point(p2, method)
+        shake = self.resolution_control_vector(shake, method)
+        point_random = self.resolution_control_vector(point_random, method)
+        shake_random = self.resolution_control_vector(shake_random, method)
         if method == 'minitouch':
             self.drag_minitouch(p1, p2, point_random=point_random)
         elif method == 'uiautomator2':
@@ -171,4 +185,6 @@ class Control(Hermit, Minitouch, Scrcpy, MaaTouch, NemuIpc):
             logger.warning(f'Control method {method} does not support drag well, '
                            f'falling back to ADB swipe may cause unexpected behaviour')
             self.swipe_adb(p1, p2, duration=ensure_time(swipe_duration * 2))
-            self.click(Button(area=(), color=(), button=area_offset(point_random, p2), name=name), False)
+            x, y = random_rectangle_point(area_offset(point_random, p2))
+            x, y = ensure_int(x, y)
+            self.click_adb(x, y)

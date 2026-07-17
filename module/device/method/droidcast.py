@@ -180,14 +180,15 @@ class DroidCast(Uiautomator2):
             logger.error(f'Unknown DROIDCAST_VERSION: {self.config.DROIDCAST_VERSION}')
 
     def _droidcast_update_resolution(self):
-        if self.is_mumu_over_version_356:
-            logger.info('Update droidcast resolution')
-            w, h = self.resolution_uiautomator2(cal_rotation=False)
-            self.get_orientation()
-            # 720, 1280
-            # mumu12 > 3.5.6 is always a vertical device
-            self.droidcast_width, self.droidcast_height = w, h
-            logger.info(f'Droicast resolution: {(w, h)}')
+        logger.info('Update droidcast resolution')
+        w, h = self.resolution_uiautomator2(cal_rotation=False)
+        self.get_orientation()
+        # MuMu 12 > 3.5.6 is always exposed as a vertical device. Other
+        # emulators generally report their framebuffer orientation directly.
+        self.droidcast_width, self.droidcast_height = w, h
+        if hasattr(self, 'resolution_set_native_size'):
+            self.resolution_set_native_size((w, h))
+        logger.info(f'DroidCast resolution: {(w, h)}')
 
     @retry
     def screenshot_droidcast(self):
@@ -226,12 +227,9 @@ class DroidCast(Uiautomator2):
     @retry
     def screenshot_droidcast_raw(self):
         self.config.DROIDCAST_VERSION = 'DroidCast_raw'
-        shape = (720, 1280)
-        if self.is_mumu_over_version_356:
-            if not self.droidcast_width or not self.droidcast_height:
-                self._droidcast_update_resolution()
-            if self.droidcast_height and self.droidcast_width:
-                shape = (self.droidcast_height, self.droidcast_width)
+        if not self.droidcast_width or not self.droidcast_height:
+            self._droidcast_update_resolution()
+        shape = (self.droidcast_height, self.droidcast_width)
 
         rotate = self.is_mumu_over_version_356 and self.orientation == 1
 
