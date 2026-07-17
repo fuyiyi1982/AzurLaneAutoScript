@@ -74,6 +74,7 @@
 | tests/test_resolution_adapter.py | 分辨率、截图和控制坐标的 10 项回归测试 |
 | tests/test_os_globe_high_resolution.py | 隐蔽海域高分辨率缩图识别回归测试 |
 | tests/fixtures/zone_obscure_2560x1440_downsampled.png | 从真实故障截图提取的最小识别区域，不含账号信息 |
+| requirements-ci.txt | 线上测试的精简依赖；大世界识别测试需要 imageio 加载真实资源模块 |
 
 ### 3.4 运行时预期日志
 
