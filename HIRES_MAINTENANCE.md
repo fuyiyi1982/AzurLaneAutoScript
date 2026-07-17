@@ -249,6 +249,8 @@ CI 不能连接模拟器，因此真实设备冒烟测试仍然是必要的。
     gh workflow run upstream-sync.yml --repo fuyiyi1982/AzurLaneAutoScript --ref hires-stable
     gh run list --repo fuyiyi1982/AzurLaneAutoScript --workflow upstream-sync.yml --limit 10
 
+如果本次修改包含 `upstream-sync.yml` 本身或新增测试，首次远端验证应把 `--ref` 改为 `hires-dev`，确保 GitHub Actions 使用开发分支里的新版工作流。晋级稳定分支后，再用 `--ref hires-stable` 做一次幂等复验。
+
 查看失败日志：
 
     gh run view RUN_ID --repo fuyiyi1982/AzurLaneAutoScript --log-failed
