@@ -68,6 +68,7 @@ class Screenshot(Adb, WSA, DroidCast, AScreenCap, Scrcpy, NemuIpc, LDOpenGL):
                 # This will take 40-60ms
                 cv2.fastNlMeansDenoising(self.image, self.image, h=17, templateWindowSize=1, searchWindowSize=2)
             self.image = self._handle_orientated_image(self.image)
+            self.image = self.resolution_normalize_image(self.image)
 
             if self.config.Error_SaveError:
                 self.screenshot_deque.append({'time': datetime.now(), 'image': self.image})
@@ -204,7 +205,7 @@ class Screenshot(Adb, WSA, DroidCast, AScreenCap, Scrcpy, NemuIpc, LDOpenGL):
 
     def check_screen_size(self):
         """
-        Screen size must be 1280x720.
+        Screen size must normalize to 1280x720.
         Take a screenshot before call.
         """
         if self._screen_size_checked:
@@ -237,7 +238,7 @@ class Screenshot(Adb, WSA, DroidCast, AScreenCap, Scrcpy, NemuIpc, LDOpenGL):
                 return True
             else:
                 logger.critical(f'Resolution not supported: {width}x{height}')
-                logger.critical('Please set emulator resolution to 1280x720')
+                logger.critical('Please set emulator resolution to 1280x720 or 2560x1440')
                 raise RequestHumanTakeover
 
     def check_screen_black(self):
