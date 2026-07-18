@@ -71,13 +71,14 @@
 | module/device/method/uiautomator_2.py | 启动时读取和校验设备原生分辨率 |
 | module/device/method/droidcast.py | DroidCast 使用真实 framebuffer 尺寸 |
 | module/os/globe_operation.py | 大世界海域标题识别入口 |
-| module/os/zone_detection.py | 对 2560×1440 缩图后的隐蔽海域标题做局部容错识别 |
+| module/os/zone_detection.py | 对 2560×1440 缩图后的六种海域标题做模板与颜色联合识别 |
 | module/os_handler/map_order.py | G.M. 指令页进入、执行与退出流程 |
 | module/os/order_detection.py | 兼容新旧 G.M. 指令页的轻量识别策略 |
 | tests/test_resolution_adapter.py | 分辨率、截图和控制坐标的 10 项回归测试 |
-| tests/test_os_globe_high_resolution.py | 隐蔽海域高分辨率缩图识别回归测试 |
+| tests/test_os_globe_high_resolution.py | 普通海域、隐蔽海域及颜色保护的 3 项高分辨率回归测试 |
 | tests/test_os_order_detection.py | 新旧 G.M. 指令页及误识别保护的 3 项回归测试 |
 | tests/fixtures/zone_obscure_2560x1440_downsampled.png | 从真实故障截图提取的最小识别区域，不含账号信息 |
+| tests/fixtures/zone_dangerous_2560x1440_downsampled.png | 从真实普通海域故障截图提取的最小识别区域 |
 | tests/fixtures/order_gms_2560x1440_downsampled.png | 从真实故障截图提取的 G.M. 指令页最小识别区域 |
 
 ### 3.4 运行时预期日志
@@ -234,7 +235,7 @@ deploy/upstream.py 会捕获异常、写入警告日志，并继续使用最后�
 
     .\toolkit\python.exe -m unittest discover -s tests -p test_upstream_sync.py -v
 
-当前预期是分辨率 10 项、高分辨率大世界识别 2 项、G.M. 指令页识别 3 项、更新器 10 项，共 25 项通过。
+当前预期是分辨率 10 项、高分辨率大世界识别 3 项、G.M. 指令页识别 3 项、更新器 10 项，共 26 项通过。
 
 运行关键文件语法检查：
 
@@ -328,7 +329,7 @@ CI 不能连接模拟器，因此真实设备冒烟测试仍然是必要的。
 1. 从 origin/hires-dev 建立临时调试分支。
 2. 在临时分支合并 upstream/master。
 3. 重点检查第 3.3 节列出的分辨率相关文件，以及 deploy 目录的同步实现。
-4. 解决冲突后运行全部 25 项测试和模拟器冒烟测试。
+4. 解决冲突后运行全部 26 项测试和模拟器冒烟测试。
 5. 再把修复提交到 hires-dev，重新触发工作流。
 
 ### 9.3 工作流测试失败
@@ -369,18 +370,18 @@ CI 不能连接模拟器，因此真实设备冒烟测试仍然是必要的。
 
 排查同类问题时，应同时确认设备方向、DroidCast framebuffer 尺寸、DroidCast_raw 返回尺寸和通用截图处理后的尺寸，避免只交换宽高数字而没有真正旋转像素。
 
-### 9.7 隐蔽海域结算后停在海域详情页
+### 9.7 大世界停在已选海域详情页
 
-典型日志是已经点击 `TEMPLATE_STORAGE_OBSCURE` 和 `STORAGE_COORDINATE_CHECKOUT`，游戏也正确进入“卡利比安海A-隐秘海域”等海域详情页，但约 60 秒后仍报 `GameStuckError: Wait too long`。
+典型日志是游戏已经进入大世界并打开某个海域详情，但约 60 秒后仍在 `os_map_goto_globe()`、`storage_coordinate_checkout()` 或 `get_zone_pinned()` 附近报 `GameStuckError: Wait too long`。错误画面可能是“普通海域”“隐秘海域”或其他已选海域。
 
-2026-07-17 的真实故障截图证明坐标换算和点击都正确。问题发生在识别阶段：2560×1440 截图缩小到 1280×720 后，标题文字的抗锯齿发生变化，`ZONE_OBSCURE` 相似度约为 0.8146，低于原来的 0.85 门槛。
+真实故障截图证明坐标换算和点击都正确。问题发生在识别阶段：2560×1440 截图缩小到 1280×720 后，海域标签文字的抗锯齿发生变化。2026-07-17 的 `ZONE_OBSCURE` 相似度约为 0.8146，2026-07-18 的 `ZONE_DANGEROUS` 相似度约为 0.8132，均低于原来的 0.85 门槛。
 
-修复只作用于 `ZONE_OBSCURE`：
+修复统一作用于 `ZONE_TYPES` 中的六种海域：
 
 - 模板相似度门槛改为 0.80。
-- 同时要求标题颜色在阈值 10 内匹配，避免仅靠放宽模板造成误识别。
-- 其他五种海域、全局模板门槛和点击坐标保持不变。
-- 回归测试使用从真实故障截图提取的最小区域，明确验证旧门槛失败、修复路径成功。
+- 同时要求海域标签颜色在阈值 10 内匹配，避免仅靠放宽模板造成误识别。
+- 只修改大世界海域类型检测；全局模板门槛和所有点击坐标保持不变。
+- 回归测试使用普通海域与隐蔽海域的真实故障截图最小区域，并交叉验证两种类型不会互相误认。
 
 排查同类问题时，先保存错误截图并离线计算目标模板相似度和颜色差异。不要在没有证据时修改坐标，也不要降低全局识别门槛。
 
@@ -483,7 +484,7 @@ CI 不能连接模拟器，因此真实设备冒烟测试仍然是必要的。
 4. 拉取 origin 和 upstream，但不要直接修改 hires-stable。
 5. 复现问题并收集客户端日志、GitHub Actions 运行链接、模拟器分辨率和实际控制后端。
 6. 在 hires-dev 或临时调试分支修复。
-7. 运行 25 项自动测试、py_compile 和必要的模拟器冒烟测试。
+7. 运行 26 项自动测试、py_compile 和必要的模拟器冒烟测试。
 8. 通过远端工作流和合并请求晋级 hires-stable。
 9. 最后验证分支祖先关系、默认分支、回退点和客户端本地配置。
 
