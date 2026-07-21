@@ -18,6 +18,9 @@ DANGEROUS_MISSION_FIXTURE = (
 DANGEROUS_WARNING_FIXTURE = (
     FIXTURES / 'zone_dangerous_warning_2560x1440_downsampled.png'
 )
+DANGEROUS_CARIBBEAN_D_FIXTURE = (
+    FIXTURES / 'zone_dangerous_caribbean_d_2560x1440_downsampled.png'
+)
 ZONE_DANGEROUS = Button(
     area=(87, 310, 171, 322),
     color=(153, 177, 197),
@@ -105,6 +108,20 @@ class TestOSGlobeHighResolution(unittest.TestCase):
                 offset=(20, 20),
                 similarity=0.80,
                 threshold=20,
+            )
+        )
+        self.assertTrue(match_pinned_zone(ImageDetector(image), ZONE_DANGEROUS))
+        self.assertFalse(match_pinned_zone(ImageDetector(image), ZONE_OBSCURE))
+
+    def test_dangerous_zone_survives_caribbean_d_title_antialiasing(self):
+        image = load_image(DANGEROUS_CARIBBEAN_D_FIXTURE)
+
+        self.assertFalse(
+            ZONE_DANGEROUS.match_template_color(
+                image,
+                offset=(20, 20),
+                similarity=0.80,
+                threshold=30,
             )
         )
         self.assertTrue(match_pinned_zone(ImageDetector(image), ZONE_DANGEROUS))
