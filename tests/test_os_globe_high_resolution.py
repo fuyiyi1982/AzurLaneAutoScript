@@ -21,6 +21,9 @@ DANGEROUS_WARNING_FIXTURE = (
 DANGEROUS_CARIBBEAN_D_FIXTURE = (
     FIXTURES / 'zone_dangerous_caribbean_d_2560x1440_downsampled.png'
 )
+DANGEROUS_WARNING_NORTHWEST_F_FIXTURE = (
+    FIXTURES / 'zone_dangerous_warning_northwest_f_2560x1440_downsampled.png'
+)
 ZONE_DANGEROUS = Button(
     area=(87, 310, 171, 322),
     color=(153, 177, 197),
@@ -121,6 +124,20 @@ class TestOSGlobeHighResolution(unittest.TestCase):
                 image,
                 offset=(20, 20),
                 similarity=0.80,
+                threshold=30,
+            )
+        )
+        self.assertTrue(match_pinned_zone(ImageDetector(image), ZONE_DANGEROUS))
+        self.assertFalse(match_pinned_zone(ImageDetector(image), ZONE_OBSCURE))
+
+    def test_dangerous_zone_survives_northwest_passage_warning_color(self):
+        image = load_image(DANGEROUS_WARNING_NORTHWEST_F_FIXTURE)
+
+        self.assertFalse(
+            ZONE_DANGEROUS.match_template_color(
+                image,
+                offset=(20, 20),
+                similarity=0.70,
                 threshold=30,
             )
         )
