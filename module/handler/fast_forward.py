@@ -8,7 +8,28 @@ from module.handler.auto_search import AutoSearchHandler
 from module.logger import logger
 from module.ui.switch import Switch
 
-FAST_FORWARD = Switch('Fast_Forward', offset=(5, 5))
+
+class FastForwardSwitch(Switch):
+    """Recognize the clearing-mode slider across old and refreshed UI skins."""
+
+    def get(self, main):
+        state = super().get(main=main)
+        if state != 'unknown':
+            return state
+
+        # The refreshed campaign preparation UI changed the slider artwork,
+        # while keeping the ON/OFF knob positions and their light/dark colors.
+        # Fall back to color only when template matching fails, and require an
+        # unambiguous match so unrelated bright UI cannot select a state.
+        matches = [
+            data['state']
+            for data in self.state_list
+            if data['check_button'].appear_on(main.device.image, threshold=20)
+        ]
+        return matches[0] if len(matches) == 1 else 'unknown'
+
+
+FAST_FORWARD = FastForwardSwitch('Fast_Forward', offset=(5, 5))
 FAST_FORWARD.add_state('on', check_button=FAST_FORWARD_ON)
 FAST_FORWARD.add_state('off', check_button=FAST_FORWARD_OFF)
 FLEET_LOCK = Switch('Fleet_Lock', offset=(5, 20))
