@@ -182,6 +182,9 @@ class Updater(DeployConfig, GitManager, PipManager):
 
     def check_update(self):
         if self.state in (0, "failed", "finish"):
+            # Publishing official upstream changes to the guarded stable branch
+            # must happen before checking whether that branch has moved.
+            self.sync_upstream_at_startup()
             self.state = self._check_update()
 
     @retry(ExecutionError, tries=3, delay=5, logger=None)
