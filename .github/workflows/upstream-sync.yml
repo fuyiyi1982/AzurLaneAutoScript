@@ -34,7 +34,75 @@ jobs:
           if git merge-base --is-ancestor upstream/master HEAD; then
             echo "Official upstream is already contained in hires-dev."
           else
-            git merge --no-edit upstream/master
+            if ! git merge --no-edit upstream/master; then
+              mapfile -t conflicts < <(git diff --name-only --diff-filter=U)
+              if (( ${#conflicts[@]} != 1 )) || [[ "${conflicts[0]}" != "module/device/control.py" ]]; then
+                printf 'Unexpected merge conflicts:\n%s\n' "${conflicts[*]}" >&2
+                exit 1
+              fi
+
+              echo "Resolve the known high-resolution control conflict."
+              git checkout --ours -- module/device/control.py
+              python - <<'PY'
+          from pathlib import Path
+
+          path = Path('module/device/control.py')
+          content = path.read_text(encoding='utf-8')
+          replacements = (
+              (
+                  "             swipe_duration=0.25, shake_duration=0.1, name='DRAG'):",
+                  "             swipe_duration=0.25, shake_duration=0.1, hold_duration=0.0, name='DRAG'):",
+              ),
+              (
+                  '            self.drag_minitouch(p1, p2, point_random=point_random)',
+                  '            self.drag_minitouch(p1, p2, point_random=point_random, hold_duration=hold_duration)',
+              ),
+              (
+                  '                swipe_duration=swipe_duration, shake_duration=shake_duration)',
+                  '                swipe_duration=swipe_duration, shake_duration=shake_duration, '
+                  'hold_duration=hold_duration)',
+              ),
+              (
+                  '            self.drag_scrcpy(p1, p2, point_random=point_random)',
+                  '            self.drag_scrcpy(p1, p2, point_random=point_random, hold_duration=hold_duration)',
+              ),
+              (
+                  '            self.drag_maatouch(p1, p2, point_random=point_random)',
+                  '            self.drag_maatouch(p1, p2, point_random=point_random, hold_duration=hold_duration)',
+              ),
+              (
+                  '            self.drag_nemu_ipc(p1, p2, point_random=point_random)',
+                  '            self.drag_nemu_ipc(p1, p2, point_random=point_random, hold_duration=hold_duration)',
+              ),
+              (
+                  '            self.swipe_adb(p1, p2, duration=ensure_time(swipe_duration * 2))\n'
+                  '            x, y = random_rectangle_point(area_offset(point_random, p2))',
+                  '            self.swipe_adb(p1, p2, duration=ensure_time(swipe_duration * 2))\n'
+                  '            hold_duration = ensure_time(hold_duration)\n'
+                  '            if hold_duration > 0:\n'
+                  '                self.sleep(hold_duration)\n'
+                  '            x, y = random_rectangle_point(area_offset(point_random, p2))',
+              ),
+          )
+
+          for old, new in replacements:
+              count = content.count(old)
+              if count != 1:
+                  raise RuntimeError(
+                      'Expected exactly one high-resolution control pattern, '
+                      f'found {count}: {old!r}'
+                  )
+              content = content.replace(old, new)
+
+          path.write_text(content, encoding='utf-8')
+          PY
+              git add module/device/control.py
+              if git diff --name-only --diff-filter=U | grep -q .; then
+                echo "Unresolved merge conflicts remain." >&2
+                exit 1
+              fi
+              git commit --no-edit
+            fi
           fi
 
           if git merge-base --is-ancestor HEAD origin/hires-stable; then
@@ -65,6 +133,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_os_globe_high_resolution.py' -v
           python -m unittest discover -s tests -p 'test_os_order_detection.py' -v
           python -m unittest discover -s tests -p 'test_upstream_sync.py' -v
+          python -m unittest discover -s tests -p 'test_fast_forward_switch.py' -v
           python -m py_compile \
             deploy/upstream.py deploy/git.py deploy/config.py \
             module/os/globe_operation.py module/os/zone_detection.py module/os/order_detection.py \
