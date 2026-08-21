@@ -1,7 +1,9 @@
 from module.base.button import Button
 from module.base.decorator import run_once
 from module.base.timer import Timer
-from module.combat.assets import GET_ITEMS_1, GET_ITEMS_2, GET_SHIP
+from module.combat.assets import (BATTLE_STATUS_A, BATTLE_STATUS_B, BATTLE_STATUS_C, BATTLE_STATUS_D,
+                                  BATTLE_STATUS_S, EXP_INFO_A, EXP_INFO_B, EXP_INFO_S, GET_ITEMS_1,
+                                  GET_ITEMS_2, GET_ITEMS_3, GET_SHIP)
 from module.exception import (GameNotRunningError, GamePageUnknownError,
                               RequestHumanTakeover)
 from module.exercise.assets import EXERCISE_PREPARATION
@@ -366,6 +368,18 @@ class UI(InfoHandler):
 
     _opsi_reset_fleet_preparation_click = 0
 
+    def ui_combat_status_cleanup(self):
+        """Leave post-battle pages when a task starts after combat ended."""
+        for button in (BATTLE_STATUS_S, BATTLE_STATUS_A, BATTLE_STATUS_B, BATTLE_STATUS_C, BATTLE_STATUS_D,
+                       EXP_INFO_S, EXP_INFO_A, EXP_INFO_B):
+            # Template matching avoids the broad color-only C/D checks from
+            # firing on normal reward and campaign pages.
+            if self.appear_then_click(button, offset=5, interval=1):
+                logger.warning(f'UI additional: recovering post-battle page {button}')
+                return True
+
+        return False
+
     def ui_page_main_popups(self, get_ship=True):
         """
         Handle popups appear at page_main, page_reward
@@ -382,6 +396,8 @@ class UI(InfoHandler):
         if self.appear_then_click(GET_ITEMS_1, offset=True, interval=3):
             return True
         if self.appear_then_click(GET_ITEMS_2, offset=True, interval=3):
+            return True
+        if self.appear_then_click(GET_ITEMS_3, offset=True, interval=3):
             return True
         if get_ship:
             if self.appear_then_click(GET_SHIP, interval=5):
@@ -473,6 +489,11 @@ class UI(InfoHandler):
         # Has a popup_confirm variant
         # so must take precedence
         if self.ui_page_os_popups():
+            return True
+
+        # A previous task may have stopped after the battle had already ended.
+        # Finish the result pages before trying to identify a normal UI page.
+        if self.ui_combat_status_cleanup():
             return True
 
         # Research popup, lost connection popup
