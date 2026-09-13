@@ -31,12 +31,52 @@ class Combat(Level, HPBalancer, Retirement, SubmarineCall, CombatAuto, CombatMan
             if self.is_combat_loading():
                 return True
 
+            # A fast emulator can finish the loading transition between two
+            # screenshots.  In that case the map walker used to wait forever
+            # because combat_appear() only recognised the loading screen and
+            # battle preparation page.  The pause button is a reliable signal
+            # that the battle has already started and combat_preparation() can
+            # safely resume from there.
+            pause = self.is_combat_executing()
+            if pause:
+                logger.warning(f'Combat already executing, loading screen missed: {pause}')
+                return True
+
         if self.appear(BATTLE_PREPARATION, offset=(30, 20)):
             return True
         if self.appear(BATTLE_PREPARATION_WITH_OVERLAY, threshold=30) and self.handle_combat_automation_confirm():
             return True
 
         return False
+
+    def combat_status_appear(self):
+        """Detect a post-battle page without clicking it.
+
+        Returns:
+            Button, bool: The detected post-battle button, or False.
+        """
+        for button in (BATTLE_STATUS_S, BATTLE_STATUS_A, BATTLE_STATUS_B, BATTLE_STATUS_C, BATTLE_STATUS_D):
+            if self.appear(button, offset=5):
+                return button
+
+        # Only use result pages that uniquely identify a completed battle.
+        # GET_ITEMS and GET_SHIP can resemble fast loading transitions and are
+        # handled by combat_status() after a result page has been confirmed.
+        for button in (EXP_INFO_S, EXP_INFO_A, EXP_INFO_B):
+            if self.appear(button, offset=5):
+                return button
+
+        return False
+
+    def combat_status_recover(self, expected_end=None):
+        """Resume combat cleanup after the combat-entry screen was missed."""
+        status = self.combat_status_appear()
+        if not status:
+            return False
+
+        logger.warning(f'Combat result detected while walking map, recovering from: {status}')
+        self.combat_status(expected_end=expected_end)
+        return True
 
     def map_offensive(self, skip_first_screenshot=True):
         """

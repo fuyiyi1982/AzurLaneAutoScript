@@ -307,6 +307,7 @@ class Fleet(Camera, AmbushHandler):
                     grid = self.view[self.view.center_loca]
 
                 # Combat
+                combat_result = False
                 if self.config.Campaign_UseFleetLock and not self.is_in_map():
                     if self.handle_retirement():
                         self.map_offensive()
@@ -319,6 +320,15 @@ class Fleet(Camera, AmbushHandler):
                         fleet_index=self.fleet_show_index,
                         submarine_mode=self._submarine_mode(expected)
                     )
+                    combat_result = True
+                elif not self.is_in_map() and self.combat_status_recover(
+                        expected_end=self._expected_end(expected)):
+                    # The game can load and finish a short battle before
+                    # combat_appear() sees the loading page.  Continue with the
+                    # same bookkeeping as a normally detected battle.
+                    combat_result = True
+
+                if combat_result:
                     self.hp_get()
                     self.lv_get(after_battle=True)
                     arrived = True if not self.config.MAP_HAS_MOVABLE_ENEMY else False
