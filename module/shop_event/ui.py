@@ -30,8 +30,6 @@ EVENT_SHOP_SCROLL.edge_threshold = 0.1
 
 if server.server == 'tw':
     EVENT_SHOP_DEADLINE_COLOR = (102, 204, 255)
-elif server.server == 'en':
-    EVENT_SHOP_DEADLINE_COLOR = (255, 207, 129)
 else:
     EVENT_SHOP_DEADLINE_COLOR = (96, 162, 62)
 OCR_EVENT_SHOP_DEADLINE = Ocr(SHOP_EVENT_DEADLINE, lang='cnocr', letter=EVENT_SHOP_DEADLINE_COLOR,
@@ -63,7 +61,7 @@ class EventShopUI(UI):
 
     @cached_property
     def event_shop_has_urpt(self):
-        if self.image_color_count(SHOP_OCR_BALANCE_SECOND, OCR_EVENT_SHOP_URPT.letter, threshold=160, count=30):
+        if self.image_color_count(SHOP_OCR_BALANCE_SECOND, OCR_EVENT_SHOP_URPT.letter, threshold=95, count=30):
             logger.info("Event shop has urpt.")
             return True
         else:
@@ -108,7 +106,7 @@ class EventShopUI(UI):
     def event_shop_load_ensure(self):
         ensure_timeout = Timer(3, count=6).start()
         for _ in self.loop():
-            if self.image_color_count(SHOP_OCR_BALANCE, OCR_EVENT_SHOP_PT.letter, threshold=160, count=30):
+            if self.image_color_count(SHOP_OCR_BALANCE, OCR_EVENT_SHOP_PT.letter, threshold=95, count=30):
                 logger.info("Event shop loaded.")
                 break
             if ensure_timeout.reached():

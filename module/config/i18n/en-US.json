@@ -808,6 +808,7 @@
       "event_20260520_cn": "Alliance Before the Hagiobull",
       "event_20260625_cn": "Miracle by Midnight",
       "event_20260813_cn": "Depths of the Astrarium",
+      "event_20260908_cn": "Tales of the Paranormal",
       "raid_20200624": "Air Raid Drills with Essex Rerun",
       "raid_20210708": "Cross Wave rerun",
       "raid_20220127": "Mystery Investigation",
@@ -819,6 +820,7 @@
       "raid_20240328": "From Zero to Hero Rerun",
       "raid_20250116": "Spring Fashion Festa",
       "raid_20260212": "Spring Auction Adventure",
+      "raid_20260827": "The Big Shots Proclamation",
       "war_archives_20180607_cn": "archives Ink Stained Steel Sakura",
       "war_archives_20180726_cn": "archives Iris of Light and Dark",
       "war_archives_20181020_en": "archives Strive Wish and Strategize",
@@ -1959,6 +1961,10 @@
     "Refresh": {
       "name": "Allow Shop Refresh",
       "help": "Refreshing will consume 50 gems"
+    },
+    "BuyUnobtainedShip": {
+      "name": "Buy Unobtained Ships",
+      "help": "Prioritizes ships marked as unobtained in the upper-right corner, regardless of the normal shop filter"
     },
     "Filter": {
       "name": "Item Filter",
