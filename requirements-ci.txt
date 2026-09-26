@@ -5,9 +5,12 @@ numpy>=1.24,<3
 opencv-python-headless>=4.8,<5
 pillow>=9,<13
 psutil>=5.9,<8
-pyyaml>=6,<7
+pydantic>=1.10,<2
 pywebio==1.6.2
+pyyaml>=6,<7
 requests>=2.31,<3
 rich>=13,<15
+scipy>=1.10,<2
 uiautomator2==2.16.17
 uiautomator2cache==0.3.0.1
+websockets>=10,<16
