@@ -1,7 +1,7 @@
 ORDER_CHECK_OFFSET = (20, 20)
 ORDER_GMS_EXIT_AREA = (45, 58, 90, 105)
 ORDER_GMS_EXIT_COLOR = (255, 229, 91)
-ORDER_GMS_EXIT_SIMILARITY = 221
+ORDER_GMS_EXIT_THRESHOLD = 30
 ORDER_GMS_EXIT_PIXEL_COUNT = 100
 
 
@@ -19,6 +19,6 @@ def is_map_order_page(detector, legacy_check):
     return detector.image_color_count(
         ORDER_GMS_EXIT_AREA,
         color=ORDER_GMS_EXIT_COLOR,
-        threshold=ORDER_GMS_EXIT_SIMILARITY,
+        threshold=ORDER_GMS_EXIT_THRESHOLD,
         count=ORDER_GMS_EXIT_PIXEL_COUNT,
     )
