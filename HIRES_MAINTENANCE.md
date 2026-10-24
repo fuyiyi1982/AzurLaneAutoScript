@@ -1,6 +1,6 @@
 # 2560×1440 与上游自动同步维护手册
 
-> 最后核对日期：2026-08-04
+> 最后核对日期：2026-10-24
 >
 > 适用仓库：fuyiyi1982/AzurLaneAutoScript
 >
@@ -73,9 +73,10 @@
 | module/os/globe_operation.py | 大世界海域标题识别入口 |
 | module/os/zone_detection.py | 对 2560×1440 缩图后的六种海域标题做模板与颜色联合识别 |
 | module/os_handler/map_order.py | G.M. 指令页进入、执行与退出流程 |
+| module/os_handler/mission.py | 大世界任务列表中月度仲裁机关任务的高分屏模板与颜色联合识别 |
 | module/os/order_detection.py | 兼容新旧 G.M. 指令页的轻量识别策略 |
 | tests/test_resolution_adapter.py | 分辨率、截图和控制坐标的 10 项回归测试 |
-| tests/test_os_globe_high_resolution.py | 普通海域、任务领取后的普通海域、三种红色警告普通海域、卡利比安海 D、隐蔽海域及颜色保护的 8 项高分辨率回归测试 |
+| tests/test_os_globe_high_resolution.py | 普通海域、任务领取后的普通海域、三种红色警告普通海域、卡利比安海 D、隐蔽海域、月度仲裁机关任务及颜色保护的 9 项高分辨率回归测试 |
 | tests/test_os_order_detection.py | 新旧 G.M. 指令页及误识别保护的 3 项回归测试 |
 | tests/fixtures/zone_obscure_2560x1440_downsampled.png | 从真实故障截图提取的最小识别区域，不含账号信息 |
 | tests/fixtures/zone_dangerous_2560x1440_downsampled.png | 从真实普通海域故障截图提取的最小识别区域 |
@@ -84,6 +85,7 @@
 | tests/fixtures/zone_dangerous_caribbean_d_2560x1440_downsampled.png | 从卡利比安海 D 停留画面提取的普通海域最小识别区域 |
 | tests/fixtures/zone_dangerous_warning_northwest_f_2560x1440_downsampled.png | 从西北航道 F 红色警告画面提取的普通海域最小识别区域 |
 | tests/fixtures/zone_dangerous_warning_forward_base_2560x1440_downsampled.png | 从核心区前哨站红紫色警告画面提取的普通海域最小识别区域 |
+| tests/fixtures/mission_monthly_boss_2560x1440_downsampled.png | 从真实大世界任务面板提取的月度仲裁机关任务最小识别区域 |
 | tests/fixtures/order_gms_2560x1440_downsampled.png | 从真实故障截图提取的 G.M. 指令页最小识别区域 |
 
 ### 3.4 运行时预期日志
@@ -240,11 +242,11 @@ deploy/upstream.py 会捕获异常、写入警告日志，并继续使用最后�
 
     .\toolkit\python.exe -m unittest discover -s tests -p test_upstream_sync.py -v
 
-当前预期是分辨率 10 项、高分辨率大世界识别 8 项、G.M. 指令页识别 3 项、更新器 10 项，共 31 项通过。
+当前预期是分辨率 10 项、高分辨率大世界识别 9 项、G.M. 指令页识别 3 项、更新器 10 项，共 32 项通过。
 
 运行关键文件语法检查：
 
-    .\toolkit\python.exe -m py_compile deploy/upstream.py deploy/git.py deploy/config.py module/os/globe_operation.py module/os/zone_detection.py module/os/order_detection.py module/os_handler/map_order.py module/device/resolution.py module/device/device.py module/device/screenshot.py module/device/control.py module/device/method/uiautomator_2.py module/device/method/droidcast.py
+    .\toolkit\python.exe -m py_compile deploy/upstream.py deploy/git.py deploy/config.py module/os/globe_operation.py module/os/zone_detection.py module/os/order_detection.py module/os_handler/map_order.py module/os_handler/mission.py module/device/resolution.py module/device/device.py module/device/screenshot.py module/device/control.py module/device/method/uiautomator_2.py module/device/method/droidcast.py
 
 ### 7.2 2560×1440 模拟器冒烟测试
 
@@ -406,7 +408,19 @@ CI 不能连接模拟器，因此真实设备冒烟测试仍然是必要的。
 
 遇到相同症状时，先看调用栈是否停在 `order_enter()`。如果已经进入 `order_execute()`，则属于后续指令按钮或弹窗问题，不应继续调整本节的页面检查条件。
 
-### 9.9 临时停止自动同步
+### 9.9 大世界每日（OpsiDaily）在核心区前哨站与直布罗陀之间死循环
+
+典型日志是所有普通大世界每日任务完成后，`OpsiDaily` 每隔约 18 秒打开任务列表点击第一栏 `MISSION_CHECKOUT`，跳转到 `[154|Forward Base]`（核心区前哨站），随后因 `Already at mission zone` 往返 `[2|Gibraltar]`（直布罗陀）刷新海域，再开启自律寻敌立即结束并提示 `Current zone is a port, do not need rescan`。
+
+2026-10-24 的真实任务面板截图表明：普通每日任务清空后，第一栏常驻月度 BOSS 任务“普通作战：仲裁机关”。2560×1440 截图缩小到 1280×720 后，`MISSION_MONTHLY_BOSS`（`78×18` 像素的“仲裁机关”文字）匹配位置为 `(669, 187, 747, 205)`，颜色最大通道差仅约 `9.83`，但模板相似度降至 `0.8228`，低于 `self.appear()` 默认的 `0.85` 门槛。未识别出月度 BOSS 任务导致程序未将 `checkout_offset` 下移到第二栏，误将仲裁机关任务当作普通每日任务反复点击。
+
+修复在 `module/os_handler/mission.py` 的 `os_get_next_mission()` 中把 `MISSION_MONTHLY_BOSS` 检查改为局部放宽模板相似度与颜色联合校验：
+
+    self.match_template_color(MISSION_MONTHLY_BOSS, offset=(20, 20), similarity=0.75, threshold=30)
+
+不修改全局识别门槛，并在 `tests/test_os_globe_high_resolution.py` 中补充真实下采样最小区域的回归测试。
+
+### 9.10 临时停止自动同步
 
 只停止官方同步，但仍允许客户端拉取现有稳定版：
 

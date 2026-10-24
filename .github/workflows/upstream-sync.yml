@@ -137,7 +137,7 @@ jobs:
           python -m py_compile \
             deploy/upstream.py deploy/git.py deploy/config.py \
             module/os/globe_operation.py module/os/zone_detection.py module/os/order_detection.py \
-            module/os_handler/map_order.py \
+            module/os_handler/map_order.py module/os_handler/mission.py \
             module/device/resolution.py module/device/device.py \
             module/device/screenshot.py module/device/control.py \
             module/device/method/uiautomator_2.py module/device/method/droidcast.py
