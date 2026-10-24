@@ -1,10 +1,11 @@
 import unittest
 from pathlib import Path
 
+import cv2
 import numpy as np
 
 from module.base.button import Button
-from module.base.utils import color_similarity_2d, crop, load_image
+from module.base.utils import color_mask, crop, load_image
 from module.os.order_detection import is_map_order_page
 
 
@@ -28,8 +29,8 @@ class ImageDetector:
         return button.match(self.image, offset=offset)
 
     def image_color_count(self, area, color, threshold, count):
-        similarity = color_similarity_2d(crop(self.image, area, copy=False), color)
-        return int(np.sum(similarity >= threshold)) > count
+        mask = color_mask(crop(self.image, area, copy=False), color, threshold=threshold)
+        return cv2.countNonZero(mask) > count
 
 
 class TestOSOrderDetection(unittest.TestCase):
@@ -46,8 +47,10 @@ class TestOSOrderDetection(unittest.TestCase):
 
     def test_unrelated_page_is_not_detected_as_map_order(self):
         image = np.zeros((720, 1280, 3), dtype=np.uint8)
-
         self.assertFalse(is_map_order_page(ImageDetector(image), ORDER_CHECK))
+
+        sea_map = np.full((720, 1280, 3), (45, 65, 95), dtype=np.uint8)
+        self.assertFalse(is_map_order_page(ImageDetector(sea_map), ORDER_CHECK))
 
 
 if __name__ == '__main__':
