@@ -19,8 +19,9 @@ from module.ocr.ocr import Ocr
 from module.os_handler.assets import (AUTO_SEARCH_REWARD, EXCHANGE_CHECK, RESET_FLEET_PREPARATION, RESET_TICKET_POPUP)
 from module.raid.assets import *
 from module.ui.assets import *
-from module.ui.page import Page, page_academy, page_campaign, page_event, page_main, page_main_white, page_sp, \
-    page_tactical
+from module.ui.daily_detection import is_daily_page
+from module.ui.page import Page, page_academy, page_campaign, page_daily, page_event, page_main, page_main_white, \
+    page_sp, page_tactical
 from module.ui_white.assets import *
 
 
@@ -40,6 +41,8 @@ class UI(InfoHandler):
             if self.appear(page_main.check_button, offset=(5, 5), interval=interval):
                 return True
             return False
+        if page == page_daily:
+            return self.is_in_daily(offset=offset, interval=interval)
         # shitty EN localization changing font width of ACADEMY title,
         # check other buttons also
         if self.config.SERVER == 'en':
@@ -53,6 +56,9 @@ class UI(InfoHandler):
 
     def is_in_main(self, offset=(30, 30), interval=0):
         return self.ui_page_appear(page_main, offset=offset, interval=interval)
+
+    def is_in_daily(self, offset=(30, 30), interval=0):
+        return is_daily_page(self, DAILY_CHECK, BACK_ARROW, offset=offset, interval=interval)
 
     def ui_main_appear_then_click(self, page, offset=(30, 30), interval=3):
         """
@@ -265,7 +271,12 @@ class UI(InfoHandler):
             for page in Page.iter_pages():
                 if page.parent is None or page.check_button is None:
                     continue
-                if self.appear(page.check_button, offset=offset, interval=5):
+                appear = (
+                    self.is_in_daily(offset=offset, interval=5)
+                    if page == page_daily
+                    else self.appear(page.check_button, offset=offset, interval=5)
+                )
+                if appear:
                     self.ui_current = page
                     island_page_detected = page.is_island() or page.parent.is_island()
                     logger.info(f'Page switch: {page} -> {page.parent}')

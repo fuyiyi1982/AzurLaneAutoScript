@@ -75,9 +75,10 @@
 | module/os_handler/map_order.py | G.M. 指令页进入、执行与退出流程 |
 | module/os_handler/mission.py | 大世界任务列表中月度仲裁机关任务的高分屏模板与颜色联合识别 |
 | module/os/order_detection.py | 兼容新旧 G.M. 指令页的轻量识别策略 |
+| module/ui/daily_detection.py | 兼容左下角角色头像遮挡的每日挑战（page_daily）双重识别策略 |
 | tests/test_resolution_adapter.py | 分辨率、截图和控制坐标的 10 项回归测试 |
 | tests/test_os_globe_high_resolution.py | 普通海域、任务领取后的普通海域、三种红色警告普通海域、卡利比安海 D、隐蔽海域、月度仲裁机关任务及颜色保护的 9 项高分辨率回归测试 |
-| tests/test_os_order_detection.py | 新旧 G.M. 指令页及误识别保护的 3 项回归测试 |
+| tests/test_os_order_detection.py | 新旧 G.M. 指令页、每日挑战页面及误识别保护的 6 项回归测试 |
 | tests/fixtures/zone_obscure_2560x1440_downsampled.png | 从真实故障截图提取的最小识别区域，不含账号信息 |
 | tests/fixtures/zone_dangerous_2560x1440_downsampled.png | 从真实普通海域故障截图提取的最小识别区域 |
 | tests/fixtures/zone_dangerous_mission_checkout_2560x1440_downsampled.png | 从任务领取后停留画面提取的普通海域最小识别区域 |
@@ -87,6 +88,7 @@
 | tests/fixtures/zone_dangerous_warning_forward_base_2560x1440_downsampled.png | 从核心区前哨站红紫色警告画面提取的普通海域最小识别区域 |
 | tests/fixtures/mission_monthly_boss_2560x1440_downsampled.png | 从真实大世界任务面板提取的月度仲裁机关任务最小识别区域 |
 | tests/fixtures/order_gms_2560x1440_downsampled.png | 从真实故障截图提取的 G.M. 指令页最小识别区域 |
+| tests/fixtures/daily_page_2560x1440_downsampled.png | 从真实每日挑战页面提取的最小识别区域，不含账号信息 |
 
 ### 3.4 运行时预期日志
 
@@ -420,7 +422,19 @@ CI 不能连接模拟器，因此真实设备冒烟测试仍然是必要的。
 
 不修改全局识别门槛，并在 `tests/test_os_globe_high_resolution.py` 中补充真实下采样最小区域的回归测试。
 
-### 9.10 临时停止自动同步
+### 9.10 每日任务（Daily）进入每日界面后卡死
+
+典型日志是 `Goto page_daily`、点击 `CAMPAIGN_MENU_GOTO_DAILY` 后画面已经停在“每日 DAILYRAID”五卡轮播界面，但 `ui_goto(page_daily)` 一直无法识别到达目标页，60 秒后报 `GameStuckError`（等待集合包含 `DAILY_CHECK`）。
+
+2026-10-25 的真实故障截图显示：与 `ORDER_CHECK` 类似，`DAILY_CHECK` 原先检测左下角 `(23, 656, 67, 698)` 的蓝色“i”帮助图标，而该位置右上半部被圆形角色头像覆盖，模板相似度降至约 `0.6165`。
+
+修复在 `module/ui/daily_detection.py` 中实现 `is_daily_page` 双重兼容识别，并接入 `module/ui/ui.py`、`module/daily/daily.py` 和 `module/map/map_operation.py`：
+
+- 优先保留旧版 `DAILY_CHECK` 模板匹配。
+- 当左下角“i”图标被遮挡时，联合检测左右两侧白色轮播箭头 `(20, 328, 58, 392)`、`(1222, 328, 1260, 392)` 与左上角 `BACK_ARROW`。
+- 点进单张卡片的关卡选择子面板后左右轮播箭头消失，`is_daily_page` 返回 `False`，保证从子面板点击 `BACK_ARROW` 退回轮播页的判定依然准确。
+
+### 9.11 临时停止自动同步
 
 只停止官方同步，但仍允许客户端拉取现有稳定版：
 
