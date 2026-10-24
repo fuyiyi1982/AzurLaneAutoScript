@@ -35,7 +35,7 @@ FLEET_LOCK.add_state('off', check_button=FLEET_UNLOCKED)
 
 class SwitchClearMode(Switch):
     def get(self, main):
-        title = main.appear(CLEAR_MODE_TITLE, offset=(20, 20))
+        title = main.match_template_color(CLEAR_MODE_TITLE, offset=(20, 20), similarity=0.75, threshold=30)
         if not title:
             return 'unknown'
         # find check area to the right of title
@@ -57,14 +57,14 @@ CLEAR_MODE.add_state('off', check_button=CLEAR_MODE_TITLE, click_button=CLEAR_MO
 class SwitchAutoSearch(Switch):
     def get(self, main):
         title = None
-        if main.appear(AUTO_SEARCH_TITLE, offset=(20, 20)):
+        if main.match_template_color(AUTO_SEARCH_TITLE, offset=(20, 20), similarity=0.75, threshold=30):
             title = AUTO_SEARCH_TITLE
         # [JP] has different character spacing in hard mode and normal mode
         if not title:
-            if main.appear(AUTO_SEARCH_TITLE2, offset=(20, 20)):
+            if main.match_template_color(AUTO_SEARCH_TITLE2, offset=(20, 20), similarity=0.75, threshold=30):
                 title = AUTO_SEARCH_TITLE2
         if not title:
-            if main.appear(AUTO_SEARCH_TITLE3, offset=(20, 20)):
+            if main.match_template_color(AUTO_SEARCH_TITLE3, offset=(20, 20), similarity=0.75, threshold=30):
                 title = AUTO_SEARCH_TITLE3
         if not title:
             return 'unknown'
