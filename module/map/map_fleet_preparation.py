@@ -190,6 +190,7 @@ class FleetOperator:
         main = self.main
         click_timer = Timer(3, count=6)
         infobar_ignore = Timer(1, count=2)
+        clicked = False
         while 1:
             if skip_first_screenshot:
                 skip_first_screenshot = False
@@ -200,7 +201,10 @@ class FleetOperator:
             if not self.options:
                 # End
                 if self.in_use():
-                    break
+                    return True
+                elif clicked and main.info_bar_count():
+                    logger.warning(f'Fleet option {index} cannot be selected due to info bar')
+                    return False
                 else:
                     self.open()
 
@@ -218,18 +222,19 @@ class FleetOperator:
                 if click_timer.reached():
                     logger.error(f'No fleet option {index} to select')
                     self.close()
-                    break
+                    return False
                 else:
                     # clicked just now, maybe click animation covers the option and dropdown menu didn't close that fast
                     continue
             if button.selected:
                 logger.info(f'Fleet option {index} is already selected')
                 self.close()
-                break
+                return True
 
             # Click
             if click_timer.reached():
                 main.device.click(button)
+                clicked = True
                 click_timer.reset()
 
     def in_use(self):
@@ -267,10 +272,13 @@ class FleetOperator:
 
         Args:
             index (int): Fleet index, 1-6.
+
+        Returns:
+            bool: If fleet is selected.
         """
         logger.info(f'Fleet {self} set to {index}')
         self.open()
-        self.click(index)
+        return bool(self.click(index))
 
 
 class FleetPreparation(InfoHandler):
@@ -372,7 +380,15 @@ class FleetPreparation(InfoHandler):
             # Fleets may reversed, because AL no longer treat the fleet with smaller index as first fleet
             fleet_2.clear()
             fleet_1.ensure_to_be(self.config.Fleet_Fleet1)
-            fleet_2.ensure_to_be(self.config.Fleet_Fleet2)
+            if not fleet_2.ensure_to_be(self.config.Fleet_Fleet2):
+                logger.warning(
+                    f'Fleet {self.config.Fleet_Fleet2} is not formed, '
+                    f'fallback to single fleet {self.config.Fleet_Fleet1}'
+                )
+                self.config.override(
+                    Fleet_Fleet2=0,
+                    Fleet_FleetOrder='fleet1_all_fleet2_standby',
+                )
         else:
             # Not using fleet 2.
             if fleet_2.allow():

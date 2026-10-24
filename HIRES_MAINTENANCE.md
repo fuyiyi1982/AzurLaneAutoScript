@@ -434,7 +434,15 @@ CI 不能连接模拟器，因此真实设备冒烟测试仍然是必要的。
 - 当左下角“i”图标被遮挡时，联合检测左右两侧白色轮播箭头 `(20, 328, 58, 392)`、`(1222, 328, 1260, 392)` 与左上角 `BACK_ARROW`。
 - 点进单张卡片的关卡选择子面板后左右轮播箭头消失，`is_daily_page` 返回 `False`，保证从子面板点击 `BACK_ARROW` 退回轮播页的判定依然准确。
 
-### 9.11 临时停止自动同步
+### 9.11 出击/活动图（如 T6）误关自律寻敌或因第二舰队未成型卡死
+
+1. **高分屏缩图漏检“周回模式”（`CLEAR_MODE_TITLE`）**：
+   2560×1440 截图下采样为 1280×720 后，关卡准备弹窗右下角的 `CLEAR_MODE_TITLE`（`76×20` 像素的“周回模式”文字）实测相似度约为 `0.7874`，低于 `self.appear()` 默认的 `0.85` 门槛。这会导致 `SwitchClearMode.get` 返回 `'unknown'`，`map_has_clear_mode` 被判为 `False`，进而使 `handle_fast_forward()` 将 `map_is_auto_search` 强制置为 `False` 并主动取消勾选“自律寻敌”（日志出现 `Auto_Search set to off`）。
+   修复在 `module/handler/fast_forward.py` 的 `SwitchClearMode` 与 `SwitchAutoSearch` 中改用 `match_template_color(..., offset=(20, 20), similarity=0.75, threshold=30)`，并在 `tests/test_fast_forward_switch.py` 中新增真实下采样最小区域回归测试。
+2. **第二舰队在游戏内未成型导致死循环点击**：
+   当配置中指定了 `Fleet2`（例如 `Fleet2 = 5`），但游戏内该编队为空或未成型时，点击 `FleetOption_5` 会弹出“该舰队没有成型，不能出击”且下拉框收起。`module/map/map_fleet_preparation.py` 的 `FleetOperator.click` 已增加 `clicked and main.info_bar_count()` 检查，发现第二舰队未成型时自动降级为单舰队全包（`Fleet_Fleet2=0, Fleet_FleetOrder='fleet1_all_fleet2_standby'`），避免触发 `GameTooManyClickError`。
+
+### 9.12 临时停止自动同步
 
 只停止官方同步，但仍允许客户端拉取现有稳定版：
 
