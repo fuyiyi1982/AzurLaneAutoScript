@@ -177,11 +177,11 @@ class Daily(Combat):
                 self.device.click(BACK_ARROW)
             return self.appear(DAILY_ENTER_CHECK, threshold=30) or self.appear(BACK_ARROW, offset=(30, 30))
 
-        self.ui_click(click_button=DAILY_ENTER, check_button=daily_enter_check, appear_button=DAILY_CHECK,
+        self.ui_click(click_button=DAILY_ENTER, check_button=daily_enter_check, appear_button=self.is_in_daily,
                       skip_first_screenshot=True)
         if self.appear(DAILY_LOCKED):
             logger.info('Daily locked')
-            self.ui_click(click_button=BACK_ARROW, check_button=DAILY_CHECK)
+            self.ui_click(click_button=BACK_ARROW, check_button=self.is_in_daily)
             self.device.sleep((1, 1.2))
             return False
 
@@ -200,7 +200,7 @@ class Daily(Combat):
                                  next_button=DAILY_FLEET_NEXT, fast=False, skip_first_screenshot=True)
             self.combat(emotion_reduce=False, save_get_items=False, expected_end=daily_end, balance_hp=False)
 
-        self.ui_click(click_button=BACK_ARROW, check_button=DAILY_CHECK, additional=self.handle_daily_additional,
+        self.ui_click(click_button=BACK_ARROW, check_button=self.is_in_daily, additional=self.handle_daily_additional,
                       skip_first_screenshot=True)
         self.device.sleep((1, 1.2))
         return True

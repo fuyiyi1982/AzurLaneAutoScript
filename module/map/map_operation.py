@@ -151,7 +151,7 @@ class MapOperation(MysteryHandler, FleetPreparation, Retirement, FastForwardHand
                     checked_in_map = True
 
                 # Accidental clicks
-                if self.appear(DAILY_CHECK, offset=(20, 20), interval=3):
+                if self.is_in_daily(offset=(20, 20), interval=3):
                     logger.info(f'{DAILY_CHECK} -> {BACK_ARROW}')
                     self.device.click(BACK_ARROW)
                     continue
@@ -409,7 +409,7 @@ class MapOperation(MysteryHandler, FleetPreparation, Retirement, FastForwardHand
             if self.handle_auto_search_exit():
                 continue
             # Accidental clicks
-            if self.appear(DAILY_CHECK, offset=(20, 20), interval=3):
+            if self.is_in_daily(offset=(20, 20), interval=3):
                 logger.info(f'{DAILY_CHECK} -> {BACK_ARROW}')
                 self.device.click(BACK_ARROW)
                 continue
