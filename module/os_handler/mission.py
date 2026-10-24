@@ -116,7 +116,7 @@ class MissionHandler(GlobeOperation, ZoneManager):
         self.os_mission_enter()
 
         checkout_offset = (20, 20)
-        if self.appear(MISSION_MONTHLY_BOSS, offset=(20, 20)):
+        if self.match_template_color(MISSION_MONTHLY_BOSS, offset=(20, 20), similarity=0.75, threshold=30):
             # If monthly BOSS hasn't been killed, there is always a task.
             logger.info('Monthly BOSS mission found, checking missions bellow it')
             checkout_offset = (-20, 100, 20, 150)

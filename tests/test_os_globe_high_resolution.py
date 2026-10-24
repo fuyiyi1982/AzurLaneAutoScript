@@ -27,6 +27,10 @@ DANGEROUS_WARNING_NORTHWEST_F_FIXTURE = (
 DANGEROUS_WARNING_FORWARD_BASE_FIXTURE = (
     FIXTURES / 'zone_dangerous_warning_forward_base_2560x1440_downsampled.png'
 )
+MONTHLY_BOSS_MISSION_FIXTURE = (
+    FIXTURES / 'mission_monthly_boss_2560x1440_downsampled.png'
+)
+MISSION_SOURCE = Path(__file__).parents[1] / 'module' / 'os_handler' / 'mission.py'
 ZONE_DANGEROUS = Button(
     area=(87, 310, 171, 322),
     color=(153, 177, 197),
@@ -40,6 +44,19 @@ ZONE_OBSCURE = Button(
     button=(85, 302, 172, 322),
     file=str(Path(__file__).parents[1] / 'assets' / 'cn' / 'os' / 'ZONE_OBSCURE.png'),
     name='ZONE_OBSCURE',
+)
+MISSION_MONTHLY_BOSS = Button(
+    area=(669, 188, 747, 206),
+    color=(121, 130, 154),
+    button=(669, 188, 747, 206),
+    file=str(
+        Path(__file__).parents[1]
+        / 'assets'
+        / 'cn'
+        / 'os_handler'
+        / 'MISSION_MONTHLY_BOSS.png'
+    ),
+    name='MISSION_MONTHLY_BOSS',
 )
 
 
@@ -181,6 +198,30 @@ class TestOSGlobeHighResolution(unittest.TestCase):
                 ImageDetector(image),
                 ZONE_OBSCURE,
             )
+        )
+
+    def test_monthly_boss_mission_survives_high_resolution_downsampling(self):
+        image = load_image(MONTHLY_BOSS_MISSION_FIXTURE)
+
+        self.assertFalse(
+            MISSION_MONTHLY_BOSS.match(
+                image,
+                offset=(20, 20),
+                similarity=0.85,
+            )
+        )
+        self.assertTrue(
+            MISSION_MONTHLY_BOSS.match_template_color(
+                image,
+                offset=(20, 20),
+                similarity=0.75,
+                threshold=30,
+            )
+        )
+        source = MISSION_SOURCE.read_text(encoding='utf-8')
+        self.assertIn(
+            'self.match_template_color(MISSION_MONTHLY_BOSS, offset=(20, 20), similarity=0.75, threshold=30)',
+            source,
         )
 
 
